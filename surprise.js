@@ -44,14 +44,15 @@
     'aria-label': 'flower',
     style: {
       position: 'fixed', right: '20px', bottom: '20px',
-      width: '64px', height: '64px', borderRadius: '50%',
+      width: '60px', height: '60px', borderRadius: '50%', // 配合手機版微調大小
       border: '2px solid #1C1A17', background: '#FFF',
-      cursor: 'pointer', fontSize: '32px', lineHeight: '60px',
+      cursor: 'pointer', fontSize: '28px', lineHeight: '56px',
       padding: '0', zIndex: '90',
       boxShadow: '0 6px 22px rgba(194,65,12,0.35), 0 0 0 6px rgba(245,241,234,0.6)',
       transition: 'transform .25s, background .25s',
       fontFamily: 'inherit',
       animation: 'rtPulse 2.6s ease-in-out infinite',
+      WebkitTapHighlightColor: 'transparent'
     }
   }, '💐');
   bouquet.addEventListener('mouseenter', () => { bouquet.style.transform = 'scale(1.1) rotate(-8deg)'; });
@@ -62,8 +63,8 @@
     const overlay = el('div', { id: 'rt-overlay-ask', style: overlayStyle() });
     const card = el('div', { style: cardStyle() },
       el('div', { style: { fontSize: '11px', letterSpacing: '0.22em', color: '#C2410C', textTransform: 'uppercase', marginBottom: '12px' } }, '★ FOR YOU ★'),
-      el('div', { style: { fontSize: '54px', marginBottom: '12px', animation: 'rtBob 2.4s ease-in-out infinite' } }, '💐'),
-      el('h2', { style: { fontFamily: '"Noto Serif TC","Noto Serif JP",serif', fontSize: '26px', margin: '0 0 8px', fontWeight: '500' } }, '你想要一個驚喜嗎？'),
+      el('div', { style: { fontSize: '50px', marginBottom: '12px', animation: 'rtBob 2.4s ease-in-out infinite' } }, '💐'),
+      el('h2', { style: { fontFamily: '"Noto Serif TC","Noto Serif JP",serif', fontSize: '22px', margin: '0 0 8px', fontWeight: '500' } }, '你想要一個驚喜嗎？'),
       el('p', { style: { fontSize: '13px', color: '#6B6358', margin: '0 0 22px', lineHeight: '1.6' } }, '我幫你藏了一點小東西…'),
       el('div', { style: { display: 'flex', gap: '10px', justifyContent: 'center' } },
         el('button', { style: btnStyle('ghost'), onclick: () => overlay.remove() }, '下次再說'),
@@ -83,10 +84,11 @@
       placeholder: '輸入暗號',
       autocomplete: 'off',
       style: {
-        fontFamily: 'inherit', fontSize: '18px', padding: '12px 14px', width: '100%',
+        fontFamily: 'inherit', fontSize: '16px', padding: '12px 14px', width: '100%',
         border: '1px solid #1C1A17', background: '#F5F1EA',
-        textAlign: 'center', letterSpacing: '0.3em',
+        textAlign: 'center', letterSpacing: '0.2em',
         outline: 'none', marginBottom: '14px', boxSizing: 'border-box',
+        borderRadius: '4px',
       }
     });
     const errEl = el('div', { style: { fontSize: '12px', color: '#C2410C', minHeight: '16px', marginBottom: '8px', letterSpacing: '0.08em' } }, '');
@@ -106,7 +108,7 @@
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
     const card = el('div', { style: cardStyle() },
       el('div', { style: { fontSize: '11px', letterSpacing: '0.22em', color: '#C2410C', textTransform: 'uppercase', marginBottom: '12px' } }, '— Secret —'),
-      el('h2', { style: { fontFamily: '"Noto Serif TC","Noto Serif JP",serif', fontSize: '22px', margin: '0 0 18px', fontWeight: '500' } }, '需要一個小小的暗號'),
+      el('h2', { style: { fontFamily: '"Noto Serif TC","Noto Serif JP",serif', fontSize: '20px', margin: '0 0 18px', fontWeight: '500' } }, '需要一個小小的暗號'),
       el('div', { style: { fontSize: '11px', color: '#6B6358', marginBottom: '14px', letterSpacing: '0.08em' } }, '提示：他的英文名字 ✦'),
       input,
       errEl,
@@ -126,8 +128,7 @@
       id: 'rt-overlay-surprise',
       style: {
         position: 'fixed', inset: '0', zIndex: '200',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-        overflowY: 'auto', padding: '0',
+        overflow: 'hidden', // 取消 body 滾動，交由內層 scrollWrap 處理手機畫面
         animation: 'rtFade .4s ease-out',
       }
     });
@@ -135,34 +136,43 @@
     // Background photo (full bleed) + dark gradient
     const bgPhoto = el('div', {
       style: {
-        position: 'fixed', inset: '0', zIndex: '0',
+        position: 'absolute', inset: '-5%', zIndex: '0',
         backgroundImage: `url(${payload.photo})`,
         backgroundSize: 'cover', backgroundPosition: 'center',
         filter: 'blur(2px) brightness(0.55) saturate(1.1)',
-        transform: 'scale(1.05)',
         animation: 'rtKenBurns 24s ease-in-out infinite alternate',
       }
     });
     const bgVignette = el('div', {
       style: {
-        position: 'fixed', inset: '0', zIndex: '0',
+        position: 'absolute', inset: '0', zIndex: '0',
         background: 'radial-gradient(ellipse at center, rgba(28,26,23,0.35) 0%, rgba(28,26,23,0.85) 100%)',
       }
     });
 
+    // 手機版滾動層：確保信件太長時在手機上可以正常上下滑動
+    const scrollWrap = el('div', {
+      style: {
+        position: 'absolute', inset: '0', zIndex: '5',
+        overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+        padding: 'max(40px, 6vh) 16px 80px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+      }
+    });
+
     // ─── Falling petals layer ───
-    const fx = el('div', { style: { position: 'fixed', inset: '0', pointerEvents: 'none', overflow: 'hidden', zIndex: '1' } });
+    const fx = el('div', { style: { position: 'absolute', inset: '0', pointerEvents: 'none', overflow: 'hidden', zIndex: '1' } });
     const symbols = ['❀','✿','♡','✦','❁','♥','✺','❃','✾'];
     const colors = ['#F8B4A0','#E0B574','#FFD4B8','#FFF1E5','#F5C6B0','#F0A88C','#FFE0CC'];
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 40; i++) {
       const s = el('span', {
         style: {
           position: 'absolute',
           left: (Math.random() * 100) + '%',
           top: (-10 - Math.random() * 40) + '%',
-          fontSize: (12 + Math.random() * 22) + 'px',
+          fontSize: (12 + Math.random() * 18) + 'px',
           color: colors[i % colors.length],
-          textShadow: '0 0 12px rgba(255,200,160,0.6)',
+          textShadow: '0 0 10px rgba(255,200,160,0.5)',
           animation: `rtFall ${6 + Math.random() * 6}s linear ${Math.random() * 5}s infinite`,
           opacity: 0.9,
         }
@@ -171,8 +181,8 @@
     }
 
     // ─── Floating sparkles ───
-    const sparkleLayer = el('div', { style: { position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: '2' } });
-    for (let i = 0; i < 20; i++) {
+    const sparkleLayer = el('div', { style: { position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '2' } });
+    for (let i = 0; i < 15; i++) {
       const sp = el('span', {
         style: {
           position: 'absolute',
@@ -190,32 +200,32 @@
     // ─── Header card with cake ───
     const headerCard = el('div', {
       style: {
-        position: 'relative', zIndex: '5',
-        margin: '60px auto 24px', maxWidth: '640px', width: 'calc(100% - 32px)',
+        position: 'relative',
+        margin: '0 auto 24px', maxWidth: '600px', width: '100%',
         textAlign: 'center', color: '#FFF',
         animation: 'rtPop .55s cubic-bezier(.2,.9,.3,1.2)',
       }
     },
       el('div', {
         style: {
-          fontSize: '110px', textAlign: 'center', margin: '0',
+          fontSize: 'clamp(80px, 20vw, 110px)', textAlign: 'center', margin: '0',
           animation: 'rtBob 2.4s ease-in-out infinite',
-          filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.4))',
+          filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.4))',
         }
       }, '🎂'),
       el('div', {
         style: {
-          fontSize: '11px', letterSpacing: '0.4em', color: '#FFD4B8',
-          textTransform: 'uppercase', marginTop: '6px',
-          textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          fontSize: '10px', letterSpacing: '0.3em', color: '#FFD4B8',
+          textTransform: 'uppercase', marginTop: '8px',
+          textShadow: '0 2px 6px rgba(0,0,0,0.5)',
         }
       }, '✦ ✦ ✦  H A P P Y  D A Y  ✦ ✦ ✦'),
       el('h2', {
         style: {
           fontFamily: '"Noto Serif JP","Noto Serif TC",serif',
-          fontSize: 'clamp(40px, 8vw, 64px)', margin: '14px 0 6px',
+          fontSize: 'clamp(36px, 8vw, 56px)', margin: '10px 0 4px',
           fontWeight: '500', letterSpacing: '0.12em',
-          textShadow: '0 4px 24px rgba(194,65,12,0.6), 0 2px 8px rgba(0,0,0,0.4)',
+          textShadow: '0 4px 18px rgba(194,65,12,0.6), 0 2px 6px rgba(0,0,0,0.4)',
           background: 'linear-gradient(135deg, #FFF 0%, #FFE0CC 50%, #F8B4A0 100%)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
@@ -224,18 +234,18 @@
       }, '生日快樂'),
       el('div', {
         style: {
-          fontSize: '13px', letterSpacing: '0.32em', color: '#FFD4B8',
+          fontSize: '12px', letterSpacing: '0.2em', color: '#FFD4B8',
           textTransform: 'uppercase', marginTop: '4px',
-          textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+          textShadow: '0 2px 6px rgba(0,0,0,0.5)',
         }
       }, 'Happy Birthday'),
       payload.tagline && el('div', {
         style: {
           fontFamily: '"Noto Serif TC",serif',
-          fontSize: '20px', marginTop: '20px',
+          fontSize: '18px', marginTop: '16px',
           color: '#FFE0CC',
           letterSpacing: '0.08em',
-          textShadow: '0 2px 12px rgba(0,0,0,0.6)',
+          textShadow: '0 2px 10px rgba(0,0,0,0.6)',
           animation: 'rtGlow 2.8s ease-in-out infinite',
         }
       }, payload.tagline),
@@ -245,9 +255,9 @@
     const letterLines = payload.letter.split('\n').map((line) =>
       el('p', {
         style: {
-          margin: line.trim() === '' ? '10px 0' : '0 0 12px',
-          lineHeight: '1.95',
-          fontSize: '15px',
+          margin: line.trim() === '' ? '8px 0' : '0 0 10px',
+          lineHeight: '1.85',
+          fontSize: '14px',
           color: '#1C1A17',
           fontFamily: '"Noto Serif TC","Noto Serif JP","Songti TC",serif',
         }
@@ -256,54 +266,55 @@
 
     const letterCard = el('div', {
       style: {
-        position: 'relative', zIndex: '5',
+        position: 'relative',
         background: 'rgba(245,241,234,0.97)',
         backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         border: '1px solid rgba(194,65,12,0.3)',
-        boxShadow: '0 24px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,224,204,0.4)',
-        margin: '0 auto 24px', maxWidth: '560px', width: 'calc(100% - 32px)',
-        padding: '34px 30px',
+        boxShadow: '0 20px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,224,204,0.3)',
+        margin: '0 auto 24px', maxWidth: '520px', width: '100%',
+        padding: '28px 20px', // 為手機縮減左右 padding
         textAlign: 'left',
         animation: 'rtPop .7s cubic-bezier(.2,.9,.3,1.2) .15s both',
+        boxSizing: 'border-box'
       }
     },
-      // Decorative top
       el('div', {
         style: {
-          textAlign: 'center', fontSize: '14px', letterSpacing: '0.4em',
-          color: '#C2410C', marginBottom: '6px',
+          textAlign: 'center', fontSize: '13px', letterSpacing: '0.3em',
+          color: '#C2410C', marginBottom: '8px',
         }
       }, '✿  ❀  ✿'),
       el('div', {
         style: {
           fontFamily: '"Noto Serif TC","Noto Serif JP",serif',
-          fontSize: '24px', marginBottom: '20px', fontWeight: '500',
+          fontSize: '22px', marginBottom: '16px', fontWeight: '500',
           textAlign: 'center',
-          paddingBottom: '14px',
+          paddingBottom: '12px',
           borderBottom: '1px solid #C8BEAB',
         }
       }, payload.to + '，'),
       ...letterLines,
       el('div', {
         style: {
-          marginTop: '24px', textAlign: 'right',
+          marginTop: '20px', textAlign: 'right',
           fontFamily: '"Noto Serif TC",serif',
-          fontSize: '15px', color: '#1C1A17', lineHeight: '1.6',
+          fontSize: '14px', color: '#1C1A17', lineHeight: '1.6',
         }
       },
         el('div', null, payload.signoff),
         el('div', {
           style: {
-            fontSize: '22px', marginTop: '6px',
-            letterSpacing: '0.1em', fontWeight: '500',
+            fontSize: '20px', marginTop: '6px',
+            letterSpacing: '0.08em', fontWeight: '500',
             color: '#C2410C',
           }
         }, payload.from + ' ♡'),
       ),
       el('div', {
         style: {
-          textAlign: 'center', fontSize: '14px', letterSpacing: '0.4em',
-          color: '#C2410C', marginTop: '18px',
+          textAlign: 'center', fontSize: '13px', letterSpacing: '0.3em',
+          color: '#C2410C', marginTop: '16px',
         }
       }, '✿  ❀  ✿'),
     );
@@ -311,16 +322,16 @@
     // ─── Photo card ───
     const photoCard = el('div', {
       style: {
-        position: 'relative', zIndex: '5',
-        margin: '0 auto 24px', maxWidth: '420px', width: 'calc(100% - 32px)',
+        position: 'relative',
+        margin: '0 auto 24px', maxWidth: '380px', width: '90%',
         animation: 'rtPop .8s cubic-bezier(.2,.9,.3,1.2) .3s both',
       }
     },
       el('div', {
         style: {
           background: '#FFF',
-          padding: '12px 12px 50px',
-          boxShadow: '0 16px 40px rgba(0,0,0,0.5)',
+          padding: '10px 10px 44px', // 營造拍立得感
+          boxShadow: '0 16px 36px rgba(0,0,0,0.5)',
           transform: 'rotate(-2deg)',
           transition: 'transform .35s',
           cursor: 'default',
@@ -336,7 +347,7 @@
         el('div', {
           style: {
             textAlign: 'center', fontFamily: '"Caveat","Noto Serif TC",cursive',
-            fontSize: '20px', color: '#1C1A17', marginTop: '14px',
+            fontSize: '18px', color: '#1C1A17', marginTop: '12px',
             letterSpacing: '0.05em',
           }
         }, '✦  我們  ✦'),
@@ -346,8 +357,8 @@
     // ─── Close button ───
     const closeBtn = el('div', {
       style: {
-        position: 'relative', zIndex: '5',
-        textAlign: 'center', margin: '0 auto 60px',
+        position: 'relative',
+        textAlign: 'center', margin: '10px auto 20px',
         animation: 'rtPop .9s cubic-bezier(.2,.9,.3,1.2) .45s both',
       }
     },
@@ -357,25 +368,30 @@
           background: 'linear-gradient(135deg, #C2410C, #D97757)',
           color: '#FFF',
           border: '1px solid rgba(255,224,204,0.6)',
-          padding: '14px 32px',
+          padding: '14px 28px',
           fontSize: '14px',
-          letterSpacing: '0.18em',
-          boxShadow: '0 8px 20px rgba(194,65,12,0.5)',
+          letterSpacing: '0.15em',
+          boxShadow: '0 8px 20px rgba(194,65,12,0.4)',
+          borderRadius: '30px'
         },
         onclick: () => overlay.remove(),
       }, '收下這份心意 ♡'),
     );
 
+    scrollWrap.appendChild(headerCard);
+    scrollWrap.appendChild(letterCard);
+    scrollWrap.appendChild(photoCard);
+    scrollWrap.appendChild(closeBtn);
+
     overlay.appendChild(bgPhoto);
     overlay.appendChild(bgVignette);
     overlay.appendChild(fx);
     overlay.appendChild(sparkleLayer);
-    overlay.appendChild(headerCard);
-    overlay.appendChild(letterCard);
-    overlay.appendChild(photoCard);
-    overlay.appendChild(closeBtn);
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target === bgVignette) overlay.remove();
+    overlay.appendChild(scrollWrap);
+    
+    // 點擊空白處關閉
+    scrollWrap.addEventListener('click', (e) => {
+      if (e.target === scrollWrap) overlay.remove();
     });
     document.body.appendChild(overlay);
   }
@@ -383,29 +399,33 @@
   function overlayStyle() {
     return {
       position: 'fixed', inset: '0',
-      background: 'rgba(28,26,23,0.62)',
-      backdropFilter: 'blur(3px)',
+      background: 'rgba(28,26,23,0.7)',
+      backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
       zIndex: '200',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px',
+      padding: '16px',
       animation: 'rtFade .25s ease-out',
     };
   }
+  
   function cardStyle() {
     return {
       background: '#F5F1EA', border: '1px solid #1C1A17',
-      padding: '32px 26px', maxWidth: '420px', width: '100%',
+      padding: '28px 20px', maxWidth: '380px', width: '100%',
       textAlign: 'center',
-      boxShadow: '0 12px 40px rgba(28,26,23,0.35)',
+      boxShadow: '0 12px 30px rgba(28,26,23,0.4)',
       animation: 'rtPop .35s cubic-bezier(.2,.9,.3,1.2)',
       boxSizing: 'border-box',
     };
   }
+  
   function btnStyle(kind) {
     const base = {
-      fontFamily: 'inherit', fontSize: '13px', padding: '10px 20px',
-      letterSpacing: '0.08em', cursor: 'pointer',
+      fontFamily: 'inherit', fontSize: '13px', padding: '10px 16px',
+      letterSpacing: '0.06em', cursor: 'pointer',
       border: '1px solid #1C1A17', transition: 'all .2s',
+      borderRadius: '4px'
     };
     return kind === 'solid'
       ? { ...base, background: '#1C1A17', color: '#F5F1EA' }
@@ -442,6 +462,20 @@
   `;
   document.head.appendChild(style);
 
-  bouquet.addEventListener('click', showAsk);
+  // ─── 5 Clicks Logic ───
+  let clickCount = 0;
+  bouquet.addEventListener('click', () => {
+    clickCount++;
+    // 每次點擊給予微小的縮放回饋，讓使用者知道有點到
+    bouquet.style.transform = 'scale(0.85) rotate(-10deg)';
+    setTimeout(() => bouquet.style.transform = '', 150);
+    
+    // 達到 5 次觸發驚喜
+    if (clickCount >= 5) {
+      showAsk();
+      clickCount = 0; // 重置計數器
+    }
+  });
+
   document.body.appendChild(bouquet);
 })();
