@@ -204,36 +204,128 @@ function TimelineView({ day, onPick }) {
 
 // ─── Map View ───────────────────────────────────
 function MapView({ day, onPick }) {
-  const [selected, setSelected] = useState(0);
+  const [selected, setSelected] = useState(null);
   const placedEvents = day.events.filter(e => e.lat && e.lng);
 
   if (placedEvents.length === 0) {
     return React.createElement('div', { style: { padding: 60, textAlign: 'center', color: 'var(--ink-3)' } }, '本日無地圖座標');
   }
 
-  const cur = placedEvents[selected] || placedEvents[0];
-  // Google Maps embed without API key — uses query
-  const q = encodeURIComponent(cur.lat + ',' + cur.lng);
-  const embedUrl = 'https://maps.google.com/maps?q=' + q + '&z=16&output=embed';
+  const sel = selected !== null ? placedEvents[selected] : null;
+
+  // Compute bounds for SVG overview
+  const lats = placedEvents.map(e => e.lat);
+  const lngs = placedEvents.map(e => e.lng);
+  const padLat = Math.max(0.005, (Math.max(...lats) - Math.min(...lats)) * 0.18);
+  const padLng = Math.max(0.005, (Math.max(...lngs) - Math.min(...lngs)) * 0.18);
+  const minLat = Math.min(...lats) - padLat;
+  const maxLat = Math.max(...lats) + padLat;
+  const minLng = Math.min(...lngs) - padLng;
+  const maxLng = Math.max(...lngs) + padLng;
+  const W = 100, H = 100;
+  function proj(lat, lng) {
+    return {
+      x: ((lng - minLng) / (maxLng - minLng)) * W,
+      y: H - ((lat - minLat) / (maxLat - minLat)) * H,
+    };
+  }
+  const points = placedEvents.map(e => ({ ...proj(e.lat, e.lng), ev: e }));
+  const polylineStr = points.map(p => p.x.toFixed(2) + ',' + p.y.toFixed(2)).join(' ');
+
+  // "Open all in Google Maps" link — uses dir/ which works in a new tab
+  const dirUrl = 'https://www.google.com/maps/dir/' + placedEvents.map(e => e.lat + ',' + e.lng).join('/');
+
+  // Single-pin embed for selected
+  const singleSrc = sel
+    ? 'https://maps.google.com/maps?q=' + encodeURIComponent(sel.lat + ',' + sel.lng) + '&z=16&output=embed'
+    : null;
 
   return (
     React.createElement('div', { className: 'map-wrap' },
       React.createElement('div', { className: 'map-canvas', style: { padding: 0, overflow: 'hidden' } },
-        React.createElement('iframe', {
-          key: cur.lat + ',' + cur.lng,
-          src: embedUrl,
-          style: { width: '100%', height: '100%', border: 0, display: 'block' },
-          loading: 'lazy',
-          referrerPolicy: 'no-referrer-when-downgrade',
-          allowFullScreen: true,
-          title: cur.title,
-        }),
+        sel
+          ? React.createElement('iframe', {
+              key: singleSrc,
+              src: singleSrc,
+              style: { width: '100%', height: '100%', border: 0, display: 'block' },
+              loading: 'lazy',
+              referrerPolicy: 'no-referrer-when-downgrade',
+              allowFullScreen: true,
+              title: sel.title,
+            })
+          : (() => {
+              // Real Google Maps backdrop (centered, zoomed to fit) + SVG pin overlay
+              const cLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+              const cLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+              const span = Math.max(Math.max(...lats) - Math.min(...lats), (Math.max(...lngs) - Math.min(...lngs)) * 0.8);
+              const z = span > 0.4 ? 9 : span > 0.18 ? 11 : span > 0.08 ? 12 : span > 0.04 ? 13 : 14;
+              const bgSrc = 'https://maps.google.com/maps?q=' + encodeURIComponent(cLat + ',' + cLng)
+                + '&z=' + z + '&output=embed';
+              return React.createElement('div', { className: 'overview-map' },
+                React.createElement('iframe', {
+                  src: bgSrc,
+                  style: { width: '100%', height: '100%', border: 0, display: 'block', pointerEvents: 'none', filter: 'saturate(0.85)' },
+                  loading: 'lazy',
+                  title: 'overview',
+                }),
+                React.createElement('svg', {
+                  viewBox: '0 0 100 100',
+                  preserveAspectRatio: 'none',
+                  className: 'overview-svg',
+                },
+                points.length > 1 && React.createElement('polyline', {
+                  points: polylineStr,
+                  fill: 'none',
+                  stroke: '#C2410C',
+                  strokeWidth: 0.6,
+                  strokeDasharray: '1.4,0.9',
+                  strokeLinecap: 'round',
+                  opacity: 0.85,
+                }),
+                // pins
+                points.map((p, i) =>
+                  React.createElement('g', { key: i, style: { cursor: 'pointer' }, onClick: () => setSelected(i) },
+                    React.createElement('circle', { cx: p.x, cy: p.y, r: 2.4, fill: '#1C1A17' }),
+                    React.createElement('circle', { cx: p.x, cy: p.y, r: 1.9, fill: '#C2410C' }),
+                    React.createElement('text', {
+                      x: p.x, y: p.y + 0.7,
+                      textAnchor: 'middle',
+                      fill: '#F5F1EA',
+                      fontSize: 2.2,
+                      fontWeight: 700,
+                      fontFamily: 'JetBrains Mono, monospace',
+                    }, i + 1),
+                  )
+                ),
+              ),
+              React.createElement('div', { className: 'overview-hint' },
+                '點數字標記查看單一地點 · ',
+                React.createElement('a', {
+                  href: dirUrl, target: '_blank', rel: 'noreferrer',
+                  style: { color: 'var(--vermillion)', textDecoration: 'none', fontWeight: 600 },
+                }, '在 Google Maps 開啟路線 →'),
+              ),
+            );
+            })(),
         React.createElement('div', { className: 'map-legend' },
-          React.createElement('div', { className: 'map-legend-title' }, day.date + ' · ' + placedEvents.length + ' STOPS'),
-          React.createElement('div', { className: 'mono' }, cur.time + ' · ' + cur.title),
+          React.createElement('div', { className: 'map-legend-title' },
+            sel ? '單點檢視 · 點下方回到總覽' : (day.date + ' · ' + placedEvents.length + ' STOPS')),
+          React.createElement('div', { className: 'mono', style: { cursor: sel ? 'pointer' : 'default' }, onClick: () => sel && setSelected(null) },
+            sel ? sel.title : (day.areas.join(' → '))),
         ),
       ),
       React.createElement('div', { className: 'map-list' },
+        React.createElement('div', {
+          className: 'map-list-item' + (selected === null ? ' active' : ''),
+          onClick: () => setSelected(null),
+          style: { fontWeight: 600 },
+        },
+          React.createElement('div', { className: 'map-list-num' }, '◉'),
+          React.createElement('div', null,
+            React.createElement('div', { className: 'map-list-title' }, '顯示全部路線'),
+            React.createElement('div', { className: 'map-list-time mono' }, placedEvents.length + ' 個地點 · ' + day.areas.join(' → ')),
+          ),
+        ),
         placedEvents.map((ev, i) =>
           React.createElement('div', {
             key: i,
