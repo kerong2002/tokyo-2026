@@ -885,7 +885,106 @@ body {
 .extras-list li:last-child { border-bottom: none; }
 .extras-list .mono { color: var(--vermillion); font-size: 12px; }
 
-/* ─── COLOPHON ─────────────────────────────────── */
+/* ─── EDITABLE BUDGET ──────────────────────────── */
+.budget-edit-bucket {
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  padding: 18px 20px;
+}
+.budget-edit-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+.budget-edit-title { margin: 0; font-size: 16px; font-weight: 500; letter-spacing: 0.04em; }
+.budget-edit-total {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vermillion);
+}
+.budget-edit-list { display: flex; flex-direction: column; gap: 4px; }
+.budget-edit-row {
+  display: grid;
+  grid-template-columns: 1fr 130px 28px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dotted var(--rule);
+  position: relative;
+}
+.budget-edit-row:last-child { border-bottom: none; }
+.budget-edit-label {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  padding: 4px 2px;
+  width: 100%;
+  outline: none;
+}
+.budget-edit-label:hover, .budget-edit-label:focus {
+  border-bottom-color: var(--vermillion);
+}
+.budget-edit-amount-wrap {
+  display: flex; align-items: center; gap: 4px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 4px 8px;
+}
+.budget-edit-amount-wrap:focus-within { border-color: var(--vermillion); }
+.budget-edit-cur { font-size: 12px; color: var(--ink-3); }
+.budget-edit-amount {
+  background: transparent; border: none; outline: none;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 14px; font-weight: 600;
+  width: 100%; text-align: right;
+  color: var(--ink);
+}
+.budget-edit-del {
+  background: transparent;
+  border: 1px solid var(--rule);
+  width: 24px; height: 24px;
+  font-size: 11px; cursor: pointer;
+  color: var(--ink-3);
+  font-family: inherit;
+  padding: 0;
+}
+.budget-edit-del:hover { background: var(--vermillion); color: var(--paper); border-color: var(--vermillion); }
+.budget-edit-bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  background: var(--paper-3);
+  margin-top: 4px;
+  position: relative;
+}
+.budget-edit-bar-fill {
+  position: absolute; inset: 0 auto 0 0;
+  background: var(--vermillion);
+  transition: width .25s;
+}
+.budget-edit-add {
+  margin-top: 12px;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--ink-3);
+  padding: 8px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  cursor: pointer;
+  font-family: inherit;
+}
+.budget-edit-add:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); border-style: solid; }
+.budget-rate-edit { display: flex; align-items: center; flex-wrap: wrap; }
+
+@media (max-width: 980px) {
+  .budget-edit-row { grid-template-columns: 1fr 110px 24px; }
+}
 .colophon {
   margin-top: 64px;
   padding-top: 24px;

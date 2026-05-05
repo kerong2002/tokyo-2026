@@ -204,104 +204,52 @@ function TimelineView({ day, onPick }) {
 
 // ─── Map View ───────────────────────────────────
 function MapView({ day, onPick }) {
-  const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(0);
   const placedEvents = day.events.filter(e => e.lat && e.lng);
 
-  // determine if we should use Tokyo or wide bbox
-  const useWide = placedEvents.some(e => e.lng > 139.85 || e.lng < 139.65);
-  const proj = useWide ? project : projectTokyo;
+  if (placedEvents.length === 0) {
+    return React.createElement('div', { style: { padding: 60, textAlign: 'center', color: 'var(--ink-3)' } }, '本日無地圖座標');
+  }
 
-  // build label points for region names
-  const regions = [
-    { name: '上野', lat: 35.7126, lng: 139.7770 },
-    { name: '東京駅', lat: 35.6812, lng: 139.7671 },
-    { name: '秋葉原', lat: 35.6989, lng: 139.7731 },
-    { name: '新宿', lat: 35.6895, lng: 139.7005 },
-    { name: '池袋', lat: 35.7295, lng: 139.7109 },
-    { name: '澀谷', lat: 35.6595, lng: 139.7004 },
-    { name: '原宿', lat: 35.6707, lng: 139.7027 },
-    { name: '淺草', lat: 35.7148, lng: 139.7967 },
-    { name: '東京鐵塔', lat: 35.6586, lng: 139.7454 },
-    { name: '晴空塔', lat: 35.7101, lng: 139.8107 },
-  ];
+  const cur = placedEvents[selected] || placedEvents[0];
+  // Google Maps embed without API key — uses query
+  const q = encodeURIComponent(cur.lat + ',' + cur.lng);
+  const embedUrl = 'https://maps.google.com/maps?q=' + q + '&z=16&output=embed';
 
   return (
     React.createElement('div', { className: 'map-wrap' },
-      React.createElement('div', { className: 'map-canvas' },
-        React.createElement('div', { className: 'map-grid' }),
-        // SVG: region rings + connector lines
-        React.createElement('svg', { className: 'map-svg', viewBox: '0 0 100 100', preserveAspectRatio: 'none' },
-          // route line connecting events in order
-          React.createElement('polyline', {
-            points: placedEvents.map(e => {
-              const p = proj(e.lat, e.lng, 100, 100);
-              return p.x + ',' + p.y;
-            }).join(' '),
-            fill: 'none',
-            stroke: 'var(--vermillion)',
-            strokeWidth: '0.4',
-            strokeDasharray: '1.2 0.8',
-            opacity: '0.6',
-            vectorEffect: 'non-scaling-stroke',
-          }),
-        ),
-        // region labels (light)
-        regions.map((r, i) => {
-          const p = proj(r.lat, r.lng, 100, 100);
-          if (p.x < 0 || p.x > 100 || p.y < 0 || p.y > 100) return null;
-          return React.createElement('div', {
-            key: i,
-            style: {
-              position: 'absolute',
-              left: p.x + '%',
-              top: p.y + '%',
-              transform: 'translate(-50%, -50%)',
-              fontSize: '10px',
-              color: 'var(--ink-4)',
-              letterSpacing: '0.1em',
-              pointerEvents: 'none',
-              fontFamily: 'Noto Serif JP, serif',
-              opacity: 0.55,
-            }
-          }, r.name);
-        }),
-        // pins
-        placedEvents.map((ev, i) => {
-          const p = proj(ev.lat, ev.lng, 100, 100);
-          const isHover = hovered === i;
-          return React.createElement('div', {
-            key: i,
-            className: 'map-pin' + (isHover ? ' active' : ''),
-            style: { left: p.x + '%', top: p.y + '%' },
-            onMouseEnter: () => setHovered(i),
-            onMouseLeave: () => setHovered(null),
-            onClick: () => onPick(ev),
-          },
-            React.createElement('div', { className: 'map-pin-dot' },
-              React.createElement('span', { className: 'map-pin-num' }, i + 1),
-            ),
-            React.createElement('div', { className: 'map-pin-label' }, ev.time + ' · ' + ev.title),
-          );
+      React.createElement('div', { className: 'map-canvas', style: { padding: 0, overflow: 'hidden' } },
+        React.createElement('iframe', {
+          key: cur.lat + ',' + cur.lng,
+          src: embedUrl,
+          style: { width: '100%', height: '100%', border: 0, display: 'block' },
+          loading: 'lazy',
+          referrerPolicy: 'no-referrer-when-downgrade',
+          allowFullScreen: true,
+          title: cur.title,
         }),
         React.createElement('div', { className: 'map-legend' },
           React.createElement('div', { className: 'map-legend-title' }, day.date + ' · ' + placedEvents.length + ' STOPS'),
-          React.createElement('div', { className: 'mono' }, day.areas.join(' → ')),
+          React.createElement('div', { className: 'mono' }, cur.time + ' · ' + cur.title),
         ),
       ),
       React.createElement('div', { className: 'map-list' },
         placedEvents.map((ev, i) =>
           React.createElement('div', {
             key: i,
-            className: 'map-list-item' + (hovered === i ? ' active' : ''),
-            onMouseEnter: () => setHovered(i),
-            onMouseLeave: () => setHovered(null),
-            onClick: () => onPick(ev),
+            className: 'map-list-item' + (selected === i ? ' active' : ''),
+            onClick: () => setSelected(i),
           },
             React.createElement('div', { className: 'map-list-num' }, String(i + 1).padStart(2, '0')),
             React.createElement('div', null,
               React.createElement('div', { className: 'map-list-title' }, ev.emoji + ' ' + ev.title),
               React.createElement('div', { className: 'map-list-time mono' }, ev.time),
               ev.note && React.createElement('div', { className: 'map-list-note' }, ev.note),
+              ev.mapsUrl && React.createElement('a', {
+                href: ev.mapsUrl, target: '_blank', rel: 'noreferrer',
+                onClick: (e) => e.stopPropagation(),
+                style: { fontSize: 11, color: 'var(--vermillion)', textDecoration: 'none', letterSpacing: '0.1em', marginTop: 6, display: 'inline-block' }
+              }, '在 Google Maps 開啟 →'),
             ),
           )
         )
@@ -316,11 +264,10 @@ function ChecklistView({ packing, dayId }) {
   const [dayDone, setDayDone] = useLocalStorage('tokyo2026-day-checklist', {});
 
   const sections = [
-    { key: 'essentials',  title: '出發必備 Essentials',  items: packing.essentials },
-    { key: 'clothing',    title: '衣物 Clothing',         items: packing.clothing },
-    { key: 'toiletries',  title: '盥洗 Toiletries',       items: packing.toiletries },
-    { key: 'gadgets',     title: '電子用品 Gadgets',      items: packing.gadgets },
-    { key: 'paperwork',   title: '證件文件 Paperwork',    items: packing.paperwork },
+    { key: 'important',  title: '🔴 重要資料 Important',  items: packing.important },
+    { key: 'clothing',   title: '👕 衣物 Clothing',         items: packing.clothing },
+    { key: 'gadgets',    title: '📱 3C Gadgets',            items: packing.gadgets },
+    { key: 'daily',      title: '🧴 日常用品 Daily',        items: packing.daily },
   ];
 
   // also include current day's checklist if d6
@@ -396,46 +343,147 @@ function ChecklistView({ packing, dayId }) {
   );
 }
 
-// ─── Budget View ────────────────────────────────
-function BudgetView({ budget }) {
-  const total = budget.categories.reduce((s, c) => s + (c.twd ? c.amount / budget.rate : c.amount), 0);
-  const totalTwd = total * budget.rate;
-  const max = Math.max(...budget.categories.map(c => c.twd ? c.amount / budget.rate : c.amount));
+// ─── Budget View (Editable) ─────────────────────
+const DEFAULT_BUDGET = {
+  rate: 0.21,
+  preTrip: [
+    { id: 'p1', label: '📱 網卡吃到飽', amount: 688 },
+    { id: 'p2', label: '🚇 地鐵 72h Pass', amount: 515 },
+    { id: 'p3', label: '🏨 ELE Hotel（6晚）', amount: 10906 },
+    { id: 'p4', label: '✈️ 飛機票 JX804+JX801', amount: 29340 },
+  ],
+  inJapan: [
+    { id: 'j1', label: '交通（Skyliner+地鐵）', amount: 8000 },
+    { id: 'j2', label: '餐飲', amount: 60000 },
+    { id: 'j3', label: '購物', amount: 80000 },
+    { id: 'j4', label: '門票', amount: 12000 },
+  ],
+};
 
-  function fmtJPY(n) { return '¥' + Math.round(n).toLocaleString(); }
-  function fmtTWD(n) { return 'NT$ ' + Math.round(n).toLocaleString(); }
+function fmtJPY(n) { return '¥' + Math.round(n).toLocaleString(); }
+function fmtTWD(n) { return 'NT$ ' + Math.round(n).toLocaleString(); }
+
+function BudgetView() {
+  const [data, setData] = useLocalStorage('tokyo2026-budget-v3', DEFAULT_BUDGET);
+
+  function updateRate(v) {
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0) setData({ ...data, rate: n });
+  }
+  function updateItem(bucket, id, field, value) {
+    setData({
+      ...data,
+      [bucket]: data[bucket].map(it =>
+        it.id === id ? { ...it, [field]: field === 'amount' ? (parseFloat(value) || 0) : value } : it
+      ),
+    });
+  }
+  function addItem(bucket) {
+    const id = bucket[0] + Date.now();
+    setData({ ...data, [bucket]: [...data[bucket], { id, label: '新項目', amount: 0 }] });
+  }
+  function removeItem(bucket, id) {
+    setData({ ...data, [bucket]: data[bucket].filter(it => it.id !== id) });
+  }
+  function reset() {
+    if (confirm('確定要重設所有預算為預設值嗎？')) setData(DEFAULT_BUDGET);
+  }
+
+  const preTotalTwd = data.preTrip.reduce((s, x) => s + x.amount, 0);
+  const inTotalJpy = data.inJapan.reduce((s, x) => s + x.amount, 0);
+  const inTotalTwd = inTotalJpy * data.rate;
+  const grandTwd = preTotalTwd + inTotalTwd;
+  const grandJpy = grandTwd / data.rate;
+
+  function bucketSection(bucketKey, title, currency, items, totalDisp) {
+    const max = Math.max(1, ...items.map(it => it.amount));
+    return React.createElement('div', { className: 'budget-edit-bucket' },
+      React.createElement('div', { className: 'budget-edit-head' },
+        React.createElement('h3', { className: 'serif budget-edit-title' }, title),
+        React.createElement('div', { className: 'budget-edit-total' }, totalDisp),
+      ),
+      React.createElement('div', { className: 'budget-edit-list' },
+        items.map(it => {
+          const w = (it.amount / max) * 100;
+          return React.createElement('div', { key: it.id, className: 'budget-edit-row' },
+            React.createElement('input', {
+              className: 'budget-edit-label',
+              type: 'text',
+              value: it.label,
+              onChange: (e) => updateItem(bucketKey, it.id, 'label', e.target.value),
+            }),
+            React.createElement('div', { className: 'budget-edit-amount-wrap' },
+              React.createElement('span', { className: 'budget-edit-cur' }, currency === 'TWD' ? 'NT$' : '¥'),
+              React.createElement('input', {
+                className: 'budget-edit-amount mono',
+                type: 'number',
+                value: it.amount,
+                onChange: (e) => updateItem(bucketKey, it.id, 'amount', e.target.value),
+              }),
+            ),
+            React.createElement('button', {
+              className: 'budget-edit-del',
+              onClick: () => removeItem(bucketKey, it.id),
+              title: '刪除',
+            }, '✕'),
+            React.createElement('div', { className: 'budget-edit-bar' },
+              React.createElement('div', { className: 'budget-edit-bar-fill', style: { width: w + '%' } }),
+            ),
+          );
+        })
+      ),
+      React.createElement('button', {
+        className: 'budget-edit-add',
+        onClick: () => addItem(bucketKey),
+      }, '+ 新增項目'),
+    );
+  }
 
   return (
-    React.createElement('div', { className: 'budget' },
-      React.createElement('div', { className: 'budget-summary' },
-        React.createElement('div', { className: 'budget-total-label' }, '預估總預算 / 每人'),
-        React.createElement('div', { className: 'budget-total-jpy' }, fmtJPY(total)),
-        React.createElement('div', { className: 'budget-total-twd' }, '≈ ' + fmtTWD(totalTwd)),
-        React.createElement('div', { className: 'budget-rate' }, '匯率 1 JPY ≈ ' + budget.rate.toFixed(2) + ' TWD'),
-        React.createElement('div', { style: { marginTop: 32, fontSize: 12, lineHeight: 1.6, color: '#E0B574' } },
-          '※ 以上為兩人 6 天 5 夜估算，實際會依購物量浮動。',
+    React.createElement('div', null,
+      React.createElement('div', { className: 'budget' },
+        React.createElement('div', { className: 'budget-summary' },
+          React.createElement('div', { className: 'budget-total-label' }, '預估總預算 (兩人)'),
+          React.createElement('div', { className: 'budget-total-jpy' }, fmtTWD(grandTwd)),
+          React.createElement('div', { className: 'budget-total-twd' }, '≈ ' + fmtJPY(grandJpy)),
+          React.createElement('div', { style: { marginTop: 24, fontSize: 12, color: 'var(--paper-3)' } }, '行前費用 (NT$)'),
+          React.createElement('div', { className: 'mono', style: { fontSize: 18, color: 'var(--paper)' } }, fmtTWD(preTotalTwd)),
+          React.createElement('div', { style: { marginTop: 12, fontSize: 12, color: 'var(--paper-3)' } }, '在日花費 (JPY)'),
+          React.createElement('div', { className: 'mono', style: { fontSize: 18, color: 'var(--paper)' } },
+            fmtJPY(inTotalJpy), ' ',
+            React.createElement('span', { style: { fontSize: 12, color: '#E0B574' } }, '≈ ' + fmtTWD(inTotalTwd))),
+          React.createElement('div', { className: 'budget-rate-edit', style: { marginTop: 24 } },
+            React.createElement('label', { style: { fontSize: 11, letterSpacing: '0.16em', color: 'var(--paper-3)', textTransform: 'uppercase' } }, '匯率 1 JPY ='),
+            React.createElement('input', {
+              className: 'mono',
+              type: 'number',
+              step: '0.001',
+              value: data.rate,
+              onChange: (e) => updateRate(e.target.value),
+              style: {
+                background: 'transparent', border: '1px solid var(--paper-3)',
+                color: 'var(--paper)', padding: '4px 8px', fontSize: 14, marginLeft: 8, width: 80, fontFamily: 'inherit',
+              },
+            }),
+            React.createElement('span', { style: { color: 'var(--paper-3)', marginLeft: 6, fontSize: 12 } }, 'TWD'),
+          ),
+          React.createElement('button', {
+            onClick: reset,
+            style: {
+              marginTop: 24, background: 'transparent', border: '1px solid var(--paper-3)',
+              color: 'var(--paper-3)', padding: '8px 14px', fontSize: 11, letterSpacing: '0.18em',
+              textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit',
+            },
+          }, '重設為預設'),
         ),
+        React.createElement('div', null,
+          bucketSection('preTrip', '行前費用 Pre-Trip', 'TWD', data.preTrip, fmtTWD(preTotalTwd)),
+          React.createElement('div', { style: { height: 24 } }),
+          bucketSection('inJapan', '在日花費 In Japan', 'JPY', data.inJapan, fmtJPY(inTotalJpy) + '  ≈ ' + fmtTWD(inTotalTwd)),
+        )
       ),
-      React.createElement('div', null,
-        React.createElement('div', { className: 'card-eyebrow' }, '分類細項 Breakdown'),
-        React.createElement('div', { className: 'budget-list' },
-          budget.categories.map(c => {
-            const jpy = c.twd ? c.amount / budget.rate : c.amount;
-            const twd = jpy * budget.rate;
-            const w = (jpy / max) * 100;
-            return React.createElement('div', { key: c.key },
-              React.createElement('div', { className: 'budget-row' },
-                React.createElement('div', { className: 'budget-cat' }, c.label),
-                React.createElement('div', { className: 'budget-amt' }, fmtJPY(jpy)),
-                React.createElement('div', { className: 'budget-twd' }, fmtTWD(twd)),
-              ),
-              React.createElement('div', { className: 'budget-bar' },
-                React.createElement('div', { className: 'budget-bar-fill', style: { width: w + '%' } }),
-              )
-            );
-          })
-        ),
-      )
+      React.createElement('div', { style: { marginTop: 16, fontSize: 12, color: 'var(--ink-3)', textAlign: 'right' } },
+        '✎ 點任何欄位即可編輯，資料會自動儲存在你的瀏覽器'),
     )
   );
 }
@@ -604,7 +652,7 @@ function App() {
       view === 'timeline' && React.createElement(TimelineView, { day, onPick: setPicked }),
       view === 'map' && React.createElement(MapView, { day, onPick: setPicked }),
       view === 'checklist' && React.createElement(ChecklistView, { packing: TRIP.meta.packing, dayId: day.id }),
-      view === 'budget' && React.createElement(BudgetView, { budget: TRIP.meta.budget }),
+      view === 'budget' && React.createElement(BudgetView, null),
 
       // pull quote at end of timeline
       view === 'timeline' && day.pullQuote &&
